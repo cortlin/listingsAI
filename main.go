@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/glebarez/sqlite"
@@ -23,40 +25,63 @@ type jsonResponseInner struct {
 }
 
 type Source struct {
-	Zip           string  `json:"Zip"`
-	StreetName    string  `json:"StreetName"`
-	FullBathrooms string  `json:"FullBathrooms"`
-	Latitude      float64 `json:"Latitude"`
-	Longitude     float64 `json:"Longitude"`
+	Zip           string      `json:"Zip"`
+	StreetName    string      `json:"StreetName"`
+	FullBathrooms interface{} `json:"FullBathrooms"`
+	Latitude      float64     `json:"Latitude"`
+	Longitude     float64     `json:"Longitude"`
 	StreetSuffix  string
 	StreetAddress string
 	City          string
 	State         string
 	County        string
 	ListingPrice  int
-	HalfBathrooms int
+	HalfBathrooms interface{}
 	Bedrooms      int
-	SquareFeet    int
+	SquareFeet    interface{}
 }
 
 type Listing struct {
 	gorm.Model
-	zip            string
-	street_name    string
-	street_suffix  string
-	city           string
-	state          string
-	county         string
-	lat            float64
-	lng            float64
-	listing_price  int
-	square_feet    int
-	bedrooms       uint8
-	bathrooms      string
-	half_bathrooms uint8
+	Zip            string
+	Street_name    string
+	Street_suffix  string
+	City           string
+	State          string
+	County         string
+	Lat            float64
+	Lng            float64
+	Listing_price  int
+	Square_feet    string
+	Bedrooms       uint8
+	Bathrooms      string
+	Half_bathrooms string
 }
 
 var db, err = gorm.Open(sqlite.Open("mls-ai.db"), &gorm.Config{})
+
+// PropToString function
+func PropToString(value interface{}) (string, error) {
+	switch v := value.(type) {
+	case string:
+		return v, nil
+	case int:
+		return strconv.Itoa(v), nil
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64), nil
+	default:
+		fmt.Println(reflect.TypeOf(v))
+		return "", fmt.Errorf("unsupported type: %T", value)
+	}
+}
+
+func StringValidated(v interface{}) string {
+	c, err := PropToString(v)
+	if err != nil {
+		panic(err.Error)
+	}
+	return c
+}
 
 func StringToListings(str string) jsonResponse {
 	data := jsonResponse{}
@@ -69,28 +94,26 @@ func StringToListings(str string) jsonResponse {
 	return data
 }
 
-func mlsToDB(mls jsonResponse) []Listing {
+func mlsToDB(mls jsonResponse) (r []Listing) {
 	arr := mls.Hits.Hits
-	r := []Listing{}
 	for _, d := range arr {
 		r = append(r, Listing{
-			zip:            d.Source.Zip,
-			street_name:    d.Source.StreetName,
-			street_suffix:  d.Source.StreetSuffix,
-			city:           d.Source.City,
-			state:          d.Source.State,
-			county:         d.Source.County,
-			lat:            d.Source.Latitude,
-			lng:            d.Source.Longitude,
-			listing_price:  d.Source.ListingPrice,
-			square_feet:    d.Source.SquareFeet,
-			bedrooms:       uint8(d.Source.Bedrooms),
-			bathrooms:      d.Source.FullBathrooms,
-			half_bathrooms: uint8(d.Source.HalfBathrooms),
+			Zip:            d.Source.Zip,
+			Street_name:    d.Source.StreetName,
+			Street_suffix:  d.Source.StreetSuffix,
+			City:           d.Source.City,
+			State:          d.Source.State,
+			County:         d.Source.County,
+			Lat:            d.Source.Latitude,
+			Lng:            d.Source.Longitude,
+			Listing_price:  d.Source.ListingPrice,
+			Square_feet:    StringValidated(d.Source.SquareFeet),
+			Bedrooms:       uint8(d.Source.Bedrooms),
+			Bathrooms:      StringValidated(d.Source.FullBathrooms),
+			Half_bathrooms: StringValidated(d.Source.HalfBathrooms),
 		})
 	}
-
-	return r
+	return
 }
 
 func main() {
