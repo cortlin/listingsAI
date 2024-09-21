@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"bytes"
@@ -116,7 +116,7 @@ func mlsToDB(mls jsonResponse) (r []Listing) {
 	return
 }
 
-func main() {
+func PopulateDB() {
 	url := "https://www.talktotucker.com/api/v1/search/search"
 
 	if err != nil {
